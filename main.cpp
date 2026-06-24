@@ -1,25 +1,32 @@
 #include <iostream>
 #include <ctime>
-#include <vector>
 
 using namespace std;
 
 //implementar multiplayer*
+//Structs e Variáveis Globais
 const int mapx = 10;
 const int mapy = 10;
 char map[mapx][mapy];
 bool run = false;
-int qtdD = 0;
+const int qtdDestroyers = 1;
+const int qtdCruzadores = 1;
+const int qtdPortaavioes = 1;
 
+struct coordenada{
+	int x;
+	int y;
+};
+struct navio{
+    coordenada partes[3];
+};
 struct player{
-	struct destroyer{
-	int destroyerx;
-	int destroyery;
-	}
-	destroyer;
-}
-player1;
+	navio destroyers[qtdDestroyers];
+    navio cruzadores[qtdCruzadores];
+    navio portaavioes[qtdPortaavioes];
+} player1;
 
+//Imprime o menu
 void menu(){
 	if(run == false){
 		cout << "Seja bem-vindo a Batalha Naval!" << endl;
@@ -34,15 +41,6 @@ void menu(){
 		}
 	}
 }
-
-void preencherMap(){
-	for (int i = 0; i < mapx; ++i) {
-        for (int j = 0; j < mapy; ++j) {
-            map[i][j] = '~';
-        }
-    }
-}
-
 //Imprimir o Mapa
 void printMap() {
 	cout << "   ";
@@ -62,51 +60,97 @@ void printMap() {
 }
 
 //Selecionar local das Embarcações
-void inputNavio() {
-    bool inputD = true;
-    char letraLinha;
+void posicionarNavio(navio* vetorNavios, int quantidade, int tamanho, char simbolo, string nomeNavio) {
+    char letraLinha, direcao;
     int numColuna;
 
-    // Calcula dinamicamente qual a última letra permitida baseada no tamanho do mapa
     char ultimaLetraMaiuscula = 'A' + (mapy - 1);
     char ultimaLetraMinuscula = 'a' + (mapy - 1);
 
-    while (inputD) {
-        cout << "Digite a posicao do Destroyer (Ex: 3 C): " << endl;
-        cin >> numColuna >> letraLinha;
+    for (int i = 0; i < quantidade; i++) { //Roda enquanto houverem naves a serem posicionadas
+        bool jogadaValida = false;
 
-        int indiceLinha = -1;
+        while (!jogadaValida) {
+            cout << "Posicionando " << nomeNavio << " " << i + 1 << " (Tamanho: " << tamanho << ")" << endl;
+            cout << "Digite a coordenada inicial (Ex: 3 C): ";
+            cin >> numColuna >> letraLinha;
 
-        // Validação dinâmica da letra
-        if (letraLinha >= 'A' && letraLinha <= ultimaLetraMaiuscula) {
-            indiceLinha = letraLinha - 'A';
-        } else if (letraLinha >= 'a' && letraLinha <= ultimaLetraMinuscula) {
-            indiceLinha = letraLinha - 'a';
-        } else {
-            cout << "Letra invalida! Para este tamanho de mapa, use de A ate " << ultimaLetraMaiuscula << endl;
-			cout << qtdD;
-		}
-        // Validação dinâmica do número da coluna
-        if (numColuna >= 0 && numColuna < mapx) {
-            player1.destroyer.destroyerx = indiceLinha;
-            player1.destroyer.destroyery = numColuna;
-            qtdD = qtdD + 1;
-        } else {
-            cout << "Numero invalido! Use de 0 ate " << (mapx - 1) << endl;
+            int indiceLinha = -1;
+            if (letraLinha >= 'A' && letraLinha <= ultimaLetraMaiuscula) indiceLinha = letraLinha - 'A';
+            else if (letraLinha >= 'a' && letraLinha <= ultimaLetraMinuscula) indiceLinha = letraLinha - 'a';
+
+            //Define se o navio será colocado na vertical ou horizontal e se ele cabe no mapa
+            direcao = 'H';
+            if (tamanho > 1) {
+                cout << "Digite a direcao (H para Horizontal, V para Vertical): ";
+                cin >> direcao;
+            }
+
+            bool cabeNoMapa = true;
+            if (indiceLinha == -1 || numColuna < 0 || numColuna >= mapx) {
+                cabeNoMapa = false;
+            } 
+
+            else if ((direcao == 'H' || direcao == 'h') && (numColuna + tamanho > mapx)) {
+                cabeNoMapa = false; 
+            } 
+
+            else if ((direcao == 'V' || direcao == 'v') && (indiceLinha + tamanho > mapy)) {
+                cabeNoMapa = false; 
+            } 
+
+            else if (direcao != 'H' && direcao != 'h' && direcao != 'V' && direcao != 'v') {
+                cabeNoMapa = false;
+            }
+
+            bool semColisao = true;
+            if (cabeNoMapa) {
+                for (int t = 0; t < tamanho; t++) {
+                    int l = (direcao == 'V' || direcao == 'v') ? indiceLinha + t : indiceLinha;
+                    int c = (direcao == 'H' || direcao == 'h') ? numColuna + t : numColuna;
+                    if (map[l][c] != '~') {
+                        semColisao = false;
+                        break;
+                    }
+                }
+            }
+
+            if (cabeNoMapa && semColisao) { //Define se o espaço está vazio ou com um navio
+                for (int t = 0; t < tamanho; t++) {
+                    int l = (direcao == 'V' || direcao == 'v') ? indiceLinha + t : indiceLinha;
+                    int c = (direcao == 'H' || direcao == 'h') ? numColuna + t : numColuna;
+
+                    vetorNavios[i].partes[t].x = l;
+                    vetorNavios[i].partes[t].y = c;
+                    map[l][c] = simbolo; 
+                }
+                jogadaValida = true;
+            } else {
+                cout << "Erro! Posicao/Direcao invalida ou ha outro navio no caminho. Tente novamente." << endl;
+            }
         }
     }
-	if(qtdD > 3){
-		inputD = false;
-	}
-    // Insere no mapa
-    map[player1.destroyer.destroyerx][player1.destroyer.destroyery] = 'D';
+}
+
+//define todos os inputs de todos os navios na função posicionarNavio
+void inputNavio() {
+    posicionarNavio(player1.destroyers, qtdDestroyers, 1, 'D', "Destroyer");
+    posicionarNavio(player1.cruzadores, qtdCruzadores, 2, 'C', "Cruzador");
+    posicionarNavio(player1.portaavioes, qtdPortaavioes, 3, 'P', "Porta-Avioes");
 }
 
 int main(){
 	menu();
+	for (int i = 0; i < mapx; ++i) {
+        for (int j = 0; j < mapy; ++j) {
+            map[i][j] = '~';
+        }
+    }
 	while(run){
-		preencherMap();
-		inputNavio();
 		printMap();
+        inputNavio();
+		printMap();
+        cout << "Posicionamento concluido!" << endl;
+        run = false;
 	}
 }
