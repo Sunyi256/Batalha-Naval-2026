@@ -5,8 +5,8 @@ using namespace std;
 
 //implementar multiplayer*
 //Structs e Variáveis Globais
-const int mapx = 10;
-const int mapy = 10;
+const int mapx = 8;
+const int mapy = 8;
 char map[mapx][mapy];
 bool run = false;
 const int qtdDestroyers = 1;
@@ -24,12 +24,17 @@ struct player{
 	navio destroyers[qtdDestroyers];
     navio cruzadores[qtdCruzadores];
     navio portaavioes[qtdPortaavioes];
-} player1;
+
+    struct map{
+        char def[mapx][mapy];
+        char atk[mapx][mapy];
+    } map;
+} player1, player2;
 
 //Imprime o menu
 void menu(){
 	if(run == false){
-		cout << "Seja bem-vindo a Batalha Naval!" << endl;
+		cout << "Seja bem-vindo ao Jogo: Batalha Naval!" << endl;
 		cout << "Deseja iniciar o jogo?" << endl;
 		cout << "S/N?";
 		char escolha;
@@ -43,23 +48,34 @@ void menu(){
 }
 //Imprimir o Mapa
 void printMap() {
-	cout << "   ";
-    for (int i = 0; i < mapx; ++i) {
-        cout << i << " ";
+	cout << "  ";
+    for (int i = 0; i < mapx; i++) {
+        char letrinha = 'A' + i;
+        cout << letrinha << " ";
     }
     cout << endl;
-    for (int i = 0; i < mapy; ++i) {
-        char letrinha = 'A' + i; 
-        cout << letrinha << "  ";
+    for (int i = 0; i < mapy; i++) {
+        if(i <= 9){ 
+        cout << i + 1 << " ";
+        }else if(i > 9){
+            cout << i;
+        }
 
-        for (int j = 0; j < mapx; ++j) {
-            cout << map[i][j] << " ";
+        for (int j = 0; j < mapx; j++) {
+            cout << player1.map.def[i][j] << " ";
         }
         cout << endl;
 	}
 }
 
-//Selecionar local das Embarcações
+void fillMap(){
+    for (int i = 0; i < mapx; ++i) {
+        for (int j = 0; j < mapy; ++j) {
+            player1.map.def[i][j] = '~';
+        }
+    }
+}
+
 void posicionarNavio(navio* vetorNavios, int quantidade, int tamanho, char simbolo, string nomeNavio) {
     char letraLinha, direcao;
     int numColuna;
@@ -141,12 +157,8 @@ void inputNavio() {
 
 int main(){
 	menu();
-	for (int i = 0; i < mapx; ++i) {
-        for (int j = 0; j < mapy; ++j) {
-            map[i][j] = '~';
-        }
-    }
 	while(run){
+        fillMap();
 		printMap();
         inputNavio();
 		printMap();
