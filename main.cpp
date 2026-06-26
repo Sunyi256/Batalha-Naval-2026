@@ -122,8 +122,19 @@ void posicionarNavio(navio* vetorNavios, int quantidade, int tamanho, char simbo
             bool semColisao = true;
             if (cabeNoMapa) {
                 for (int t = 0; t < tamanho; t++) {
-                    int l = (direcao == 'V' || direcao == 'v') ? indiceLinha + t : indiceLinha;
-                    int c = (direcao == 'H' || direcao == 'h') ? numColuna + t : numColuna;
+                    int l;
+                    if (direcao == 'V' || direcao == 'v') {
+                        l = indiceLinha + t;
+                    } else {
+                        l = indiceLinha;
+                    }
+
+                    int c;
+                    if (direcao == 'H' || direcao == 'h') {
+                        c = numColuna + t;
+                    } else {
+                        c = numColuna;
+                    }
                     if (map[l][c] != '~') {
                         semColisao = false;
                         break;
