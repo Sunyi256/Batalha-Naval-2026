@@ -1,78 +1,88 @@
 #include <iostream>
 #include <ctime>
+#include <vector> // Adicionado para usar vetores dinâmicos
 
 using namespace std;
 
-//implementar multiplayer*
-//Structs e Variáveis Globais
-const int mapx = 8;
-const int mapy = 8;
-char map[mapx][mapy];
+// Variáveis Globais
+int mapx = 8;
+int mapy = 8;
+vector<vector<char>> mapaGlobal;
 bool run = false;
 const int qtdDestroyers = 1;
 const int qtdCruzadores = 1;
 const int qtdPortaavioes = 1;
 
-struct coordenada{
-	int x;
-	int y;
+struct coordenada {
+    int x;
+    int y;
 };
-struct navio{
+
+struct navio {
     coordenada partes[3];
 };
-struct player{
-	navio destroyers[qtdDestroyers];
+
+struct player {
+    navio destroyers[qtdDestroyers];
     navio cruzadores[qtdCruzadores];
     navio portaavioes[qtdPortaavioes];
 
-    struct map{
-        char def[mapx][mapy];
-        char atk[mapx][mapy];
+    struct map {
+        vector<vector<char>> def;
+        vector<vector<char>> atk;
     } map;
 } player1, player2;
 
-//Imprime o menu
-void menu(){
-	if(run == false){
-		cout << "Seja bem-vindo ao Jogo: Batalha Naval!" << endl;
-		cout << "Deseja iniciar o jogo?" << endl;
-		cout << "S/N?";
-		char escolha;
-		cin >> escolha;
-		if(escolha == 'S' || escolha == 's'){
-			run = true;
-		}else if(escolha == 'N' || escolha == 'n'){
-			exit(0);
-		}
-	}
+// Imprime o menu e permite configurar o tamanho do mapa
+void menu() {
+    if (!run) {
+        cout << "Seja bem-vindo ao Jogo: Batalha Naval!" << endl;
+        cout << "Deseja iniciar o jogo? (S/N): ";
+        char escolha;
+        cin >> escolha;
+        if (escolha == 'S' || escolha == 's') {
+            run = true;
+            cout << "Digite o tamanho do mapa (Largura e Altura, ex: 8 8): ";
+            cin >> mapx >> mapy;
+        } else {
+            exit(0);
+        }
+    }
 }
-//Imprimir o Mapa
+
+// Inicializa e redimensiona os mapas com as novas variáveis mapx e mapy
+void fillMap() {
+    // Redimensiona o mapa global
+    mapaGlobal.assign(mapy, vector<char>(mapx, '~'));
+
+    // Redimensiona os mapas do Player 1
+    player1.map.def.assign(mapy, vector<char>(mapx, '~'));
+    player1.map.atk.assign(mapy, vector<char>(mapx, '~'));
+
+    // Redimensiona os mapas do Player 2
+    player2.map.def.assign(mapy, vector<char>(mapx, '~'));
+    player2.map.atk.assign(mapy, vector<char>(mapx, '~'));
+}
+
+// Imprime o Mapa de Defesa do Player 1 (Passível de adaptação para o Player Atual)
 void printMap() {
-	cout << "  ";
+    cout << "  ";
     for (int i = 0; i < mapx; i++) {
         char letrinha = 'A' + i;
         cout << letrinha << " ";
     }
     cout << endl;
     for (int i = 0; i < mapy; i++) {
-        if(i <= 9){ 
-        cout << i + 1 << " ";
-        }else if(i > 9){
-            cout << i;
+        if (i < 9) { 
+            cout << i + 1 << " ";
+        } else {
+            cout << i + 1; // Ajustado para alinhar números com 2 dígitos
         }
 
         for (int j = 0; j < mapx; j++) {
             cout << player1.map.def[i][j] << " ";
         }
         cout << endl;
-	}
-}
-
-void fillMap(){
-    for (int i = 0; i < mapx; ++i) {
-        for (int j = 0; j < mapy; ++j) {
-            player1.map.def[i][j] = '~';
-        }
     }
 }
 
@@ -80,22 +90,22 @@ void posicionarNavio(navio* vetorNavios, int quantidade, int tamanho, char simbo
     char letraLinha, direcao;
     int numColuna;
 
-    char ultimaLetraMaiuscula = 'A' + (mapy - 1);
-    char ultimaLetraMinuscula = 'a' + (mapy - 1);
+    char ultimaLetraMaiuscula = 'A' + (mapx - 1); // Corrigido para mapx (colunas)
+    char ultimaLetraMinuscula = 'a' + (mapx - 1);
 
-    for (int i = 0; i < quantidade; i++) { //Roda enquanto houverem naves a serem posicionadas
+    for (int i = 0; i < quantidade; i++) {
         bool jogadaValida = false;
 
         while (!jogadaValida) {
             cout << "Posicionando " << nomeNavio << " " << i + 1 << " (Tamanho: " << tamanho << ")" << endl;
             cout << "Digite a coordenada inicial (Ex: 3 C): ";
             cin >> numColuna >> letraLinha;
+            numColuna--; // Ajuste para índice 0 (se o usuário digita 1, vira 0)
 
             int indiceLinha = -1;
             if (letraLinha >= 'A' && letraLinha <= ultimaLetraMaiuscula) indiceLinha = letraLinha - 'A';
             else if (letraLinha >= 'a' && letraLinha <= ultimaLetraMinuscula) indiceLinha = letraLinha - 'a';
 
-            //Define se o navio será colocado na vertical ou horizontal e se ele cabe no mapa
             direcao = 'H';
             if (tamanho > 1) {
                 cout << "Digite a direcao (H para Horizontal, V para Vertical): ";
@@ -106,15 +116,12 @@ void posicionarNavio(navio* vetorNavios, int quantidade, int tamanho, char simbo
             if (indiceLinha == -1 || numColuna < 0 || numColuna >= mapx) {
                 cabeNoMapa = false;
             } 
-
             else if ((direcao == 'H' || direcao == 'h') && (numColuna + tamanho > mapx)) {
                 cabeNoMapa = false; 
             } 
-
             else if ((direcao == 'V' || direcao == 'v') && (indiceLinha + tamanho > mapy)) {
                 cabeNoMapa = false; 
             } 
-
             else if (direcao != 'H' && direcao != 'h' && direcao != 'V' && direcao != 'v') {
                 cabeNoMapa = false;
             }
@@ -122,34 +129,25 @@ void posicionarNavio(navio* vetorNavios, int quantidade, int tamanho, char simbo
             bool semColisao = true;
             if (cabeNoMapa) {
                 for (int t = 0; t < tamanho; t++) {
-                    int l;
-                    if (direcao == 'V' || direcao == 'v') {
-                        l = indiceLinha + t;
-                    } else {
-                        l = indiceLinha;
-                    }
+                    int l = (direcao == 'V' || direcao == 'v') ? indiceLinha + t : indiceLinha;
+                    int c = (direcao == 'H' || direcao == 'h') ? numColuna + t : numColuna;
 
-                    int c;
-                    if (direcao == 'H' || direcao == 'h') {
-                        c = numColuna + t;
-                    } else {
-                        c = numColuna;
-                    }
-                    if (map[l][c] != '~') {
+                    if (mapaGlobal[l][c] != '~') {
                         semColisao = false;
                         break;
                     }
                 }
             }
 
-            if (cabeNoMapa && semColisao) { //Define se o espaço está vazio ou com um navio
+            if (cabeNoMapa && semColisao) {
                 for (int t = 0; t < tamanho; t++) {
                     int l = (direcao == 'V' || direcao == 'v') ? indiceLinha + t : indiceLinha;
                     int c = (direcao == 'H' || direcao == 'h') ? numColuna + t : numColuna;
 
                     vetorNavios[i].partes[t].x = l;
                     vetorNavios[i].partes[t].y = c;
-                    map[l][c] = simbolo; 
+                    mapaGlobal[l][c] = simbolo; 
+                    player1.map.def[l][c] = simbolo; // Atualiza no mapa do player também
                 }
                 jogadaValida = true;
             } else {
@@ -159,21 +157,21 @@ void posicionarNavio(navio* vetorNavios, int quantidade, int tamanho, char simbo
     }
 }
 
-//define todos os inputs de todos os navios na função posicionarNavio
 void inputNavio() {
     posicionarNavio(player1.destroyers, qtdDestroyers, 1, 'D', "Destroyer");
     posicionarNavio(player1.cruzadores, qtdCruzadores, 2, 'C', "Cruzador");
     posicionarNavio(player1.portaavioes, qtdPortaavioes, 3, 'P', "Porta-Avioes");
 }
 
-int main(){
-	menu();
-	while(run){
-        fillMap();
-		printMap();
+int main() {
+    menu();
+    while (run) {
+        fillMap(); // Configura o tamanho dos vetores com os valores atuais de mapx e mapy
+        printMap();
         inputNavio();
-		printMap();
+        printMap();
         cout << "Posicionamento concluido!" << endl;
         run = false;
-	}
+    }
+    return 0;
 }
