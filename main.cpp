@@ -1,17 +1,17 @@
 #include <iostream>
 #include <ctime>
-#include <vector> // Adicionado para usar vetores dinâmicos
 
 using namespace std;
 
 // Variáveis Globais
-int mapx = 8;
-int mapy = 8;
-vector<vector<char>> mapaGlobal;
+const int mapx = 99;
+const int mapy = 99;
+char mapaGlobal[mapx][mapy];
 bool run = false;
 const int qtdDestroyers = 1;
 const int qtdCruzadores = 1;
 const int qtdPortaavioes = 1;
+int tamanhox, tamanhoy;
 
 struct coordenada {
     int x;
@@ -28,8 +28,8 @@ struct player {
     navio portaavioes[qtdPortaavioes];
 
     struct map {
-        vector<vector<char>> def;
-        vector<vector<char>> atk;
+        char def[mapx][mapy];
+        char atk[mapx][mapy];
     } map;
 } player1, player2;
 
@@ -43,7 +43,7 @@ void menu() {
         if (escolha == 'S' || escolha == 's') {
             run = true;
             cout << "Digite o tamanho do mapa (Largura e Altura, ex: 8 8): ";
-            cin >> mapx >> mapy;
+            cin >> tamanhox >> tamanhoy;
         } else {
             exit(0);
         }
@@ -52,34 +52,32 @@ void menu() {
 
 // Inicializa e redimensiona os mapas com as novas variáveis mapx e mapy
 void fillMap() {
-    // Redimensiona o mapa global
-    mapaGlobal.assign(mapy, vector<char>(mapx, '~'));
-
-    // Redimensiona os mapas do Player 1
-    player1.map.def.assign(mapy, vector<char>(mapx, '~'));
-    player1.map.atk.assign(mapy, vector<char>(mapx, '~'));
-
-    // Redimensiona os mapas do Player 2
-    player2.map.def.assign(mapy, vector<char>(mapx, '~'));
-    player2.map.atk.assign(mapy, vector<char>(mapx, '~'));
+    for(int i = 0; i < mapx; i++){
+        for(int j = 0; j < mapy; j++){
+            player1.map.def[i][j] = '~';
+            player1.map.atk[i][j] = '~';
+            player2.map.def[i][j] = '~';
+            player2.map.atk[i][j] = '~';
+        }
+    }
 }
 
-// Imprime o Mapa de Defesa do Player 1 (Passível de adaptação para o Player Atual)
+// Imprime os Mapas
 void printMap() {
     cout << "  ";
-    for (int i = 0; i < mapx; i++) {
+    for (int i = 0; i < tamanhox; i++) {
         char letrinha = 'A' + i;
         cout << letrinha << " ";
     }
     cout << endl;
-    for (int i = 0; i < mapy; i++) {
+    for (int i = 0; i < tamanhoy; i++) {
         if (i < 9) { 
             cout << i + 1 << " ";
         } else {
-            cout << i + 1; // Ajustado para alinhar números com 2 dígitos
+            cout << i + 1;
         }
 
-        for (int j = 0; j < mapx; j++) {
+        for (int j = 0; j < tamanhox; j++) {
             cout << player1.map.def[i][j] << " ";
         }
         cout << endl;
@@ -90,7 +88,7 @@ void posicionarNavio(navio* vetorNavios, int quantidade, int tamanho, char simbo
     char letraLinha, direcao;
     int numColuna;
 
-    char ultimaLetraMaiuscula = 'A' + (mapx - 1); // Corrigido para mapx (colunas)
+    char ultimaLetraMaiuscula = 'A' + (mapx - 1);
     char ultimaLetraMinuscula = 'a' + (mapx - 1);
 
     for (int i = 0; i < quantidade; i++) {
@@ -147,7 +145,7 @@ void posicionarNavio(navio* vetorNavios, int quantidade, int tamanho, char simbo
                     vetorNavios[i].partes[t].x = l;
                     vetorNavios[i].partes[t].y = c;
                     mapaGlobal[l][c] = simbolo; 
-                    player1.map.def[l][c] = simbolo; // Atualiza no mapa do player também
+                    player1.map.def[l][c] = simbolo;
                 }
                 jogadaValida = true;
             } else {
@@ -164,9 +162,10 @@ void inputNavio() {
 }
 
 int main() {
+    srand(time(NULL));
     menu();
     while (run) {
-        fillMap(); // Configura o tamanho dos vetores com os valores atuais de mapx e mapy
+        fillMap();
         printMap();
         inputNavio();
         printMap();
