@@ -147,21 +147,40 @@ void posicionarNavio(player &p, navio* vetorNavios, int quantidade, int tamanho,
             bool semColisao = true;
             if (cabeNoMapa) {
                 for (int t = 0; t < tamanho; t++) {
-                    int l = (direcao == 'V' || direcao == 'v') ? numLinha + t : numLinha;
-                    int c = (direcao == 'H' || direcao == 'h') ? indiceColuna + t : indiceColuna;  
+                    int l;
+                    if (direcao == 'V' || direcao == 'v') {
+                        l = numLinha + t;
+                    } else {
+                        l = numLinha;
+                    }
+                
+                    int c;
+                    if (direcao == 'H' || direcao == 'h') {
+                        c = indiceColuna + t;
+                    } else {
+                        c = indiceColuna;
+                    } 
 
                     if (p.map.def[l][c] != '~') {
                         semColisao = false;
-                        break;
                     }
                 }
             }
 
             if (cabeNoMapa && semColisao) {
                 for (int t = 0; t < tamanho; t++) {
-                    int l = (direcao == 'V' || direcao == 'v') ? numLinha + t : numLinha;
-                    int c = (direcao == 'H' || direcao == 'h') ? indiceColuna + t : indiceColuna;
-
+                    int l;
+                    if (direcao == 'V' || direcao == 'v') {
+                        l = numLinha + t;
+                    } else {
+                        l = numLinha;
+                    }
+                    int c;
+                    if (direcao == 'H' || direcao == 'h') {
+                        c = indiceColuna + t;
+                    } else {
+                        c = indiceColuna;
+                    }
                     vetorNavios[i].partes[t].x = l;
                     vetorNavios[i].partes[t].y = c;
                     p.map.def[l][c] = simbolo;
@@ -204,7 +223,7 @@ void realizarAtaque(player &atacante, player &defensor, bool bot) {
             indiceColuna = rand() % tamanhox;
         } while (atacante.map.atk[numLinha][indiceColuna] != '~');
         
-        cout << "A maquina atirou em " << (char)('A' + indiceColuna) << " " << numLinha + 1 << endl;
+        cout << "A maquina atirou em " << 'A' + indiceColuna << " " << numLinha + 1 << endl;
     } else {
         bool coordenadaValida = false;
         while (!coordenadaValida) {
