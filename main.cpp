@@ -8,12 +8,12 @@ using namespace std;
 // Variáveis Globais
 const int mapx = 99;
 const int mapy = 99;
-char mapaGlobal[mapx][mapy];
-bool run = false;
-const int qtdDestroyers = 1;
-const int qtdCruzadores = 1;
+char mapaGlobal[mapx][mapy]; 
+bool run = false; 
+const int qtdDestroyers = 1; 
+const int qtdCruzadores = 1; 
 const int qtdPortaavioes = 1;
-int tamanhox, tamanhoy;
+int tamanhox, tamanhoy; 
 
 struct coordenada {
     int x;
@@ -24,9 +24,17 @@ struct navio {
     coordenada partes[3];
 };
 
+struct Habilidades {
+    int cooldownCruz;
+    int cooldownArea;
+};
+
 struct player {
+    string nome; 
+    int turnosJogados; 
+    Habilidades habilidades; 
     navio destroyers[qtdDestroyers];
-    navio cruzadores[qtdCruzadores];
+    navio cruzadores[qtdCruzadores]; 
     navio portaavioes[qtdPortaavioes];
 
     struct map {
@@ -35,15 +43,58 @@ struct player {
     } map;
 } player1, player2;
 
+struct RegistroRanking {
+    string nome;
+    int turnos;
+};
+
+const int MAX_RANKING = 100;
+RegistroRanking ranking[MAX_RANKING];
+int qtdRegistrosRanking = 0;
+
+void atualizarRanking(string nome, int turnos) {
+    if (qtdRegistrosRanking < MAX_RANKING) {
+        ranking[qtdRegistrosRanking].nome = nome;
+        ranking[qtdRegistrosRanking].turnos = turnos;
+        qtdRegistrosRanking++;
+        for (int i = 0; i < qtdRegistrosRanking - 1; i++) {
+            for (int j = 0; j < qtdRegistrosRanking - i - 1; j++) {
+                if (ranking[j].turnos > ranking[j + 1].turnos) {
+                    RegistroRanking aux = ranking[j];
+                    ranking[j] = ranking[j + 1];
+                    ranking[j + 1] = aux;
+                }
+            }
+        }
+    }
+}
+
+// Exibe a tabela de líderes
+void exibirRanking() {
+    cout << "===== RANKING DE VITORIAS (Menos Rodadas) =====" << endl;
+    if (qtdRegistrosRanking == 0) {
+        cout << "Nenhum recorde registrado ainda!" << endl;
+    } else {
+        for (int i = 0; i < qtdRegistrosRanking; i++) {
+            cout << i + 1 << "º Lugar: " << ranking[i].nome << " - " << ranking[i].turnos << " rodadas." << endl;
+        }
+    }
+}
+
 // Imprime o menu e permite configurar o tamanho do mapa
 void menu() {
     if (!run) {
+        exibirRanking(); // Exibe o ranking sempre antes de começar
         cout << "Seja bem-vindo ao Jogo: Batalha Naval!" << endl;
-        cout << "Deseja iniciar o jogo? (S/N): ";
+        cout << "Deseja iniciar o jogo? (S): ";
         char escolha;
         cin >> escolha;
         if (escolha == 'S' || escolha == 's') {
             run = true;
+            
+            cout << "Digite o nome do Jogador 1: ";
+            cin >> player1.nome;
+
             cout << "Digite o tamanho do mapa (Largura e Altura, ex: 8 8): ";
             cin >> tamanhox >> tamanhoy;
 
@@ -200,8 +251,8 @@ void inputNavio(player &p, bool bot) {
     posicionarNavio(p, p.portaavioes, qtdPortaavioes, 3, 'P', "Porta-Avioes", bot);
 }
 
-//Verifica qual jogador venceu
-void verificarVitoria(player &defensor, bool &statusJogo, string nomeGanhador) {
+//Verifica qual jogador venceu (Mantido o padrão original, recebendo a struct correspondente)
+void verificarVitoria(player &defensor, bool &statusJogo, string nomeGanhador, int turnosVencedor) {
     for (int i = 0; i < tamanhoy; i++) {
         for (int j = 0; j < tamanhox; j++) {
             if (defensor.map.def[i][j] == 'D' || defensor.map.def[i][j] == 'C' || defensor.map.def[i][j] == 'P') {
@@ -209,25 +260,85 @@ void verificarVitoria(player &defensor, bool &statusJogo, string nomeGanhador) {
             }
         }
     }
-    cout << "   FIM DE JOGO! " << nomeGanhador << " VENCEU A BATALHA!" << endl;
+    cout << "FIM DE JOGO!" << nomeGanhador << "VENCEU A BATALHA EM " << turnosVencedor << " RODADAS!" << endl;
+    atualizarRanking(nomeGanhador, turnosVencedor);
     statusJogo = false; 
+}
+
+// Processa o impacto de forma segura dentro dos limites do tabuleiro
+void processarImpactoTiro(player &atacante, player &defensor, int l, int c) {
+    if (l >= 0 && l < tamanhoy && c >= 0 && c < tamanhox) {
+        char alvo = defensor.map.def[l][c];
+        if (alvo == '~') {
+            if (atacante.map.atk[l][c] == '~') {
+                atacante.map.atk[l][c] = 'O'; 
+                defensor.map.def[l][c] = 'O';
+            }
+        } else if (alvo == 'D' || alvo == 'C' || alvo == 'P') {
+            atacante.map.atk[l][c] = 'X'; 
+            defensor.map.def[l][c] = 'X';
+            cout << "FOGO em [" << char('A' + c) << " " << l + 1 << "]! Navio atingido!" << endl;
+        }
+    }
 }
 
 void realizarAtaque(player &atacante, player &defensor, bool bot) {
     char letraColuna;
     int numLinha, indiceColuna = -1;
+    int tipoTiro = 1; // 1: Normal, 2: Cruz, 3: Área 3x3
+
+    // Reduz os tempos de recarga no início da rodada do atacante
+    if (atacante.habilidades.cooldownCruz > 0) atacante.habilidades.cooldownCruz--;
+    if (atacante.habilidades.cooldownArea > 0)  atacante.habilidades.cooldownArea--;
 
     if (bot) {
+        // Inteligência básica do bot para usar os tiros especiais
+        if (atacante.habilidades.cooldownArea == 0) {
+            tipoTiro = 3;
+            atacante.habilidades.cooldownArea = 5;
+        } else if (atacante.habilidades.cooldownCruz == 0) {
+            tipoTiro = 2;
+            atacante.habilidades.cooldownCruz = 3;
+        } else {
+            tipoTiro = 1;
+        }
+
         do {
             numLinha = rand() % tamanhoy;
             indiceColuna = rand() % tamanhox;
         } while (atacante.map.atk[numLinha][indiceColuna] != '~');
         
-        cout << "A maquina atirou em " << 'A' + indiceColuna << " " << numLinha + 1 << endl;
+        cout << "A maquina usou o Disparo Tipo " << tipoTiro << " em " << char('A' + indiceColuna) << " " << numLinha + 1 << endl;
     } else {
+        // Menu de tipos de tiros para o jogador humano
+        cout << "Escolha o tipo de disparo para esta rodada:" << endl;
+        cout << "1 - Tiro Comum (1 bloco)" << endl;
+        
+        if (atacante.habilidades.cooldownCruz == 0) cout << "2 - Tiro em Cruz [+] (Pronto)" << endl;
+        else cout << "2 - Tiro em Cruz [+] (Recarregando: " << atacante.habilidades.cooldownCruz << " rodadas)" << endl;
+
+        if (atacante.habilidades.cooldownArea == 0) cout << "3 - Bomba em Area 3x3 [■] (Pronto)" << endl;
+        else cout << "3 - Bomba em Area 3x3 [■] (Recarregando: " << atacante.habilidades.cooldownArea << " rodadas)" << endl;
+        
+        cout << "Opcao: ";
+        cin >> tipoTiro;
+
+        // Se tentar usar um tiro em recarga, reverte para o normal
+        if (tipoTiro == 2 && atacante.habilidades.cooldownCruz > 0) {
+            cout << "Habilidade em recarga! Disparando tiro normal." << endl;
+            tipoTiro = 1;
+        } else if (tipoTiro == 3 && atacante.habilidades.cooldownArea > 0) {
+            cout << "Habilidade em recarga! Disparando tiro normal." << endl;
+            tipoTiro = 1;
+        }
+
+        // Ativa o cooldown para os turnos seguintes
+        if (tipoTiro == 2) atacante.habilidades.cooldownCruz = 4; 
+        if (tipoTiro == 3) atacante.habilidades.cooldownArea = 6;
+
         bool coordenadaValida = false;
         while (!coordenadaValida) {
-            cout << "Digite a coordenada do tiro (Ex: B 4): ";
+            cout << "Digite a coordenada central do tiro (Ex: B 4): ";
             if (!(cin >> letraColuna >> numLinha)) {
                 cin.clear();
                 cin.ignore();
@@ -240,84 +351,121 @@ void realizarAtaque(player &atacante, player &defensor, bool bot) {
             else if (letraColuna >= 'a' && letraColuna <= 'a' + (tamanhox - 1)) indiceColuna = letraColuna - 'a';
 
             if (indiceColuna >= 0 && numLinha >= 0 && numLinha < tamanhoy) {
-                if (atacante.map.atk[numLinha][indiceColuna] == '~') {
-                    coordenadaValida = true;
-                } else {
-                    cout << "Voce ja atirou ai! Escolha outra coordenada." << endl;
-                }
+                coordenadaValida = true;
             } else {
                 cout << "Coordenada fora do mapa! Tente novamente." << endl;
             }
         }
     }
 
-    char alvo = defensor.map.def[numLinha][indiceColuna];
+    // Incrementa a rodada jogada pelo atacante
+    atacante.turnosJogados++;
 
-    if (alvo == '~') {
-        cout << "AGUA!" << endl;
-        atacante.map.atk[numLinha][indiceColuna] = 'O'; 
-        defensor.map.def[numLinha][indiceColuna] = 'O';
-    } else {
-        cout << "FOGO! Um navio foi atingido!" << endl;
-        atacante.map.atk[numLinha][indiceColuna] = 'X'; 
-        defensor.map.def[numLinha][indiceColuna] = 'X';
+    // Aplicação dos tipos de tiros baseado na escolha
+    if (tipoTiro == 1) {
+        char alvoAnterior = defensor.map.def[numLinha][indiceColuna];
+        processarImpactoTiro(atacante, defensor, numLinha, indiceColuna);
+        if (alvoAnterior == '~') cout << "AGUA!" << endl;
+    } 
+    else if (tipoTiro == 2) {
+        // Formato em cruz (+)
+        processarImpactoTiro(atacante, defensor, numLinha, indiceColuna);     // Centro
+        processarImpactoTiro(atacante, defensor, numLinha - 1, indiceColuna); // Cima
+        processarImpactoTiro(atacante, defensor, numLinha + 1, indiceColuna); // Baixo
+        processarImpactoTiro(atacante, defensor, numLinha, indiceColuna - 1); // Esquerda
+        processarImpactoTiro(atacante, defensor, numLinha, indiceColuna + 1); // Direita
+    } 
+    else if (tipoTiro == 3) {
+        // Formato Quadrado 3x3
+        for (int i = -1; i <= 1; i++) {
+            for (int j = -1; j <= 1; j++) {
+                processarImpactoTiro(atacante, defensor, numLinha + i, indiceColuna + j);
+            }
+        }
     }
 }
 
 int main() {
     srand(time(NULL));
-    menu();
-    if (!run){
-        return 0;
-    }
     
-    int modoJogo;
-    cout << "Escolha o modo de jogo: " << endl << "1 - Contra outro jogador" << endl << "2 - Contra a Maquina Opcao: " << endl;
-    cin >> modoJogo;
-    fillMap();
-    
-    cout << "--- JOGADOR 1: POSICIONE SEUS NAVIOS ---" << endl;
-    inputNavio(player1, false);
-    printMap(player1.map.def); // Mostra como ficou o mapa do P1
-    
-    if (modoJogo == 1) {
-        cout << "--- JOGADOR 2: POSICIONE SEUS NAVIOS ---" << endl;
-        inputNavio(player2, false);
-        printMap(player2.map.def);
-    } else {
-        cout << "--- MAQUINA POSICIONANDO NAVIOS... ---" << endl;
-        inputNavio(player2, true);
-        cout << "Navios da maquina posicionados!" << endl;
-    }
+    // Loop para permitir rodar o jogo várias vezes sem perder o ranking da sessão
+    while (true) {
+        run = false;
+        menu();
+        if (!run){
+            return 0;
+        }
+        
+        int modoJogo;
+        cout << "Escolha o modo de jogo: " << endl << "1 - Contra outro jogador" << endl << "2 - Contra a MaquinaOpcao: " << endl;
+        cin >> modoJogo;
+        
+        // Configuração inicial de nomes e variáveis de controle
+        player1.turnosJogados = 0;
+        player1.habilidades.cooldownCruz = 0;
+        player1.habilidades.cooldownArea = 0;
 
-    // Loop de ataques
-    bool jogoRodando = true;
-    int turno = 1;
+        if (modoJogo == 1) {
+            cout << "Digite o nome do Jogador 2: ";
+            cin >> player2.nome;
+        } else {
+            player2.nome = "A MAQUINA";
+        }
+        player2.turnosJogados = 0;
+        player2.habilidades.cooldownCruz = 0;
+        player2.habilidades.cooldownArea = 0;
 
-    while (jogoRodando) {
-        if (turno == 1) {
-            cout << "=== TURNO DO JOGADOR 1 ===" << endl;
-            cout << "Seu mapa de ATAQUES dados ao inimigo:" << endl;
-            printMap(player1.map.atk); 
-            
-            realizarAtaque(player1, player2, false);
-            verificarVitoria(player2, jogoRodando, "JOGADOR 1");
-            
-            turno = 2;
-        } 
-        else {
-            cout << "=== TURNO DO OPONENTE ===" << endl;
-            if (modoJogo == 1) {
-                cout << "Seu mapa de ATAQUES dados ao inimigo (Jogador 2):" << endl;
-                printMap(player2.map.atk);
-                realizarAtaque(player2, player1, false);
-                verificarVitoria(player1, jogoRodando, "JOGADOR 2");
-            } else {
-                realizarAtaque(player2, player1, true); 
-                verificarVitoria(player1, jogoRodando, "A MAQUINA");
+        fillMap();
+        
+        cout << "--- " << player1.nome << ": POSICIONE SEUS NAVIOS ---" << endl;
+        inputNavio(player1, false);
+        printMap(player1.map.def);
+        
+        if (modoJogo == 1) {
+            cout << "--- " << player2.nome << ": POSICIONE SEUS NAVIOS ---" << endl;
+            inputNavio(player2, false);
+            printMap(player2.map.def);
+        } else {
+            cout << "--- MAQUINA POSICIONANDO NAVIOS... ---" << endl;
+            inputNavio(player2, true);
+            cout << "Navios da maquina posicionados!" << endl;
+        }
+
+        // Loop de ataques
+        bool jogoRodando = true;
+        int turno = 1;
+
+        while (jogoRodando) {
+            if (turno == 1) {
+                cout << "=== TURNO DE: " << player1.nome << " ===" << endl;
+                cout << "Seu mapa de ATAQUES dados ao inimigo:" << endl;
+                printMap(player1.map.atk); 
+                
+                realizarAtaque(player1, player2, false);
+                verificarVitoria(player2, jogoRodando, player1.nome, player1.turnosJogados);
+                
+                turno = 2;
+            } 
+            else {
+                cout << "=== TURNO DE: " << player2.nome << " ===" << endl;
+                if (modoJogo == 1) {
+                    cout << "Seu mapa de ATAQUES dados ao inimigo:" << endl;
+                    printMap(player2.map.atk);
+                    realizarAtaque(player2, player1, false);
+                } else {
+                    realizarAtaque(player2, player1, true); 
+                }
+                verificarVitoria(player1, jogoRodando, player2.nome, player2.turnosJogados);
+                
+                turno = 1;
             }
-            
-            turno = 1;
+        }
+
+        cout << "Deseja jogar novamente para atualizar o ranking? (S): ";
+        char jogarNovamente;
+        cin >> jogarNovamente;
+        if (jogarNovamente != 'S' && jogarNovamente != 's') {
+            exit(0);
         }
     }
 
