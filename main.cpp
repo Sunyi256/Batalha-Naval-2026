@@ -165,7 +165,6 @@ void posicionarNavio(player &p, navio* vetorNavios, int quantidade, int tamanho,
                     cin.clear();
                     cin.ignore();
                     cout << "Entrada invalida! Use o formato Letra Numero (Ex: B 4)." << endl;
-                    continue;
                 }
                 numLinha--; // Ajuste para índice 0 da matriz
 
